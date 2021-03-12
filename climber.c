@@ -36,7 +36,7 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define COLS 30		// floor width in tiles
 #define ROWS 60		// total scrollable height in tiles
 
-#define MAX_FLOORS 20		// total # of floors in a stage
+#define MAX_FLOORS 15		// total # of floors in a stage
 #define GAPSIZE 4		// gap size in tiles
 #define BOTTOM_FLOOR_Y 2	// offset for bottommost floor
 
@@ -46,12 +46,12 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define ACTOR_MAX_X 228		// rightmost position of actor
 #define ACTOR_SCROLL_UP_Y 110	// min Y position to scroll up
 #define ACTOR_SCROLL_DOWN_Y 140	// max Y position to scroll down
-#define JUMP_VELOCITY 18	// Y velocity when jumping
+#define JUMP_VELOCITY 20	// Y velocity when jumping
 
 // constants for various tiles
 #define CH_BORDER 0x40
 #define CH_FLOOR 0xf4
-#define CH_LADDER 0xd4
+#define CH_LADDER 0xac
 #define CH_ITEM 0xc4
 #define CH_BLANK 0x20
 #define CH_BASEMENT 0x97
@@ -162,7 +162,15 @@ typedef struct Floor {
   int gap:4;		// X position of gap
   int ladder1:4;	// X position of first ladder
   int ladder2:4;	// X position of second ladder
-  int objtype:4;	// item type (FloorItem)
+  int ladder3:4;	// X position of third ladder
+  int ladder4:4;	// X position of fouth ladder
+  int ladder5:4;	// X position of fith ladder
+  int ladder6:4;	// X position of six ladder
+  int ladder7:4;	// X position of seventh ladder
+  int ladder8:4;	// X position of eigth ladder
+  int ladder9:4;	// X position of nine ladder
+  int ladder10:4;	// X position of tenth ladder
+  int objtype:5;	// item type (FloorItem)
   int objpos:4;		// X position of object
 } Floor;
 
@@ -199,12 +207,39 @@ void make_floors() {
       // only have gaps in higher floors
       lev->gap = i>=5 ? rndint(0,13) : 0;
     } while (ladder_in_gap(prevlev->ladder1, lev->gap) || 
-             ladder_in_gap(prevlev->ladder2, lev->gap));
+             ladder_in_gap(prevlev->ladder2, lev->gap) || 
+             ladder_in_gap(prevlev->ladder3, lev->gap) ||
+             ladder_in_gap(prevlev->ladder4, lev->gap) ||
+             ladder_in_gap(prevlev->ladder5, lev->gap) ||
+             ladder_in_gap(prevlev->ladder6, lev->gap) ||
+             ladder_in_gap(prevlev->ladder7, lev->gap) ||
+             ladder_in_gap(prevlev->ladder8, lev->gap) ||
+             ladder_in_gap(prevlev->ladder9, lev->gap) ||
+             ladder_in_gap(prevlev->ladder10, lev->gap));
+
     do {
       lev->ladder1 = rndint(1,14);
       lev->ladder2 = rndint(1,14);
+      lev->ladder3 = rndint(1,14);
+      lev->ladder4 = rndint(1,14);
+      lev->ladder5 = rndint(1,14);
+      lev->ladder6 = rndint(1,14);
+      lev->ladder7 = rndint(1,14);
+      lev->ladder8 = rndint(1,14);
+      lev->ladder9 = rndint(1,14);
+      lev->ladder10 = rndint(1,14);
+
+
     } while (ladder_in_gap(lev->ladder1, lev->gap) || 
-             ladder_in_gap(lev->ladder2, lev->gap));
+             ladder_in_gap(lev->ladder2, lev->gap) || 
+             ladder_in_gap(lev->ladder3, lev->gap) ||
+             ladder_in_gap(lev->ladder4, lev->gap) ||
+             ladder_in_gap(lev->ladder5, lev->gap) ||
+             ladder_in_gap(lev->ladder6, lev->gap) ||
+             ladder_in_gap(lev->ladder7, lev->gap) ||
+             ladder_in_gap(lev->ladder8, lev->gap) ||
+             ladder_in_gap(lev->ladder9, lev->gap) ||
+	     ladder_in_gap(lev->ladder10, lev->gap));
     if (i > 0) {
       lev->objtype = rndint(1,4);
       do {
@@ -220,6 +255,14 @@ void make_floors() {
   floors[MAX_FLOORS-1].gap = 0;
   floors[MAX_FLOORS-1].ladder1 = 0;
   floors[MAX_FLOORS-1].ladder2 = 0;
+  floors[MAX_FLOORS-1].ladder3 = 0;
+  floors[MAX_FLOORS-1].ladder4 = 0;
+  floors[MAX_FLOORS-1].ladder5 = 0;
+  floors[MAX_FLOORS-1].ladder6 = 0;
+  floors[MAX_FLOORS-1].ladder7 = 0;
+  floors[MAX_FLOORS-1].ladder8 = 0;
+  floors[MAX_FLOORS-1].ladder9 = 0;
+  floors[MAX_FLOORS-1].ladder10 = 0;
   floors[MAX_FLOORS-1].objtype = 0;
 }
 
@@ -271,11 +314,52 @@ void draw_floor_line(byte row_height) {
         // draw ladders
         if (lev->ladder1) {
           buf[lev->ladder1*2] = CH_LADDER;	// left
-          buf[lev->ladder1*2+1] = CH_LADDER+1;	// right
+          buf[lev->ladder1*2+1] = CH_LADDER+1; // right
+          
         }
         if (lev->ladder2) {
           buf[lev->ladder2*2] = CH_LADDER;	// left
           buf[lev->ladder2*2+1] = CH_LADDER+1;	// right
+        }
+        if (lev->ladder3) {
+          buf[lev->ladder3*2] = CH_LADDER;	// left
+          buf[lev->ladder3*2+1] = CH_LADDER+1; // right
+          
+        }
+         if (lev->ladder4) {
+          buf[lev->ladder4*2] = CH_LADDER;	// left
+          buf[lev->ladder4*2+1] = CH_LADDER+1; // right
+          
+        }
+         if (lev->ladder5) {
+          buf[lev->ladder5*2] = CH_LADDER;	// left
+          buf[lev->ladder5*2+1] = CH_LADDER+1; // right
+          
+        }
+        if (lev->ladder6) {
+          buf[lev->ladder6*2] = CH_LADDER;	// left
+          buf[lev->ladder6*2+1] = CH_LADDER+1; // right
+          
+        }
+        if (lev->ladder7) {
+          buf[lev->ladder7*2] = CH_LADDER;	// left
+          buf[lev->ladder7*2+1] = CH_LADDER+1; // right
+          
+        }
+        if (lev->ladder8) {
+          buf[lev->ladder8*2] = CH_LADDER;	// left
+          buf[lev->ladder8*2+1] = CH_LADDER+1; // right
+          
+        }
+        if (lev->ladder9) {
+          buf[lev->ladder9*2] = CH_LADDER;	// left
+          buf[lev->ladder9*2+1] = CH_LADDER+1; // right
+          
+        }
+        if (lev->ladder10) {
+          buf[lev->ladder10*2] = CH_LADDER;	// left
+          buf[lev->ladder10*2+1] = CH_LADDER+1; // right
+          
         }
       }
       // draw object, if it exists
@@ -370,7 +454,7 @@ typedef enum ActorState {
 };
 
 typedef enum ActorType {
-  ACTOR_PLAYER, ACTOR_ENEMY, ACTOR_RESCUE
+  ACTOR_PLAYER, ACTOR_RESCUE
 };
 
 typedef struct Actor {
@@ -381,7 +465,7 @@ typedef struct Actor {
   sbyte yvel;		// Y velocity (when jumping)
   sbyte xvel;		// X velocity (when jumping)
   int name:2;		// ActorType (2 bits)
-  int pal:2;		// palette color (2 bits)
+  int pal:9;		// palette color (2 bits)
   int dir:1;		// direction (0=right, 1=left)
   int onscreen:1;	// is actor onscreen?
 } Actor;
@@ -395,7 +479,6 @@ void create_actors_on_floor(byte floor_index) {
   if (!a->onscreen) {
     Floor *floor = &floors[floor_index];
     a->state = STANDING;
-    a->name = ACTOR_ENEMY;
     a->x = rand8();
     a->yy = get_floor_yy(floor_index);
     a->floor = floor_index;
@@ -460,10 +543,13 @@ void draw_actor(byte i) {
 
 // draw the scoreboard, right now just two digits
 void draw_scoreboard() {
-  oam_off = oam_spr(24+0, 24, '0'+(score >> 4), 2, oam_off);
-  oam_off = oam_spr(24+8, 24, '0'+(score & 0xf), 2, oam_off);
+  oam_off = oam_spr(24+0, 24, '0'+(score >> 4), 1, oam_off);
+  oam_off = oam_spr(24+8, 24, '0'+(score & 0xf), 1, oam_off);
 }
-
+void draw_scoreboard_endgame(){
+   oam_off = oam_spr(135+0, 78, '0'+(score >> 4), 2, oam_off);
+  oam_off = oam_spr(135+8, 78, '0'+(score & 0xf), 2, oam_off);
+}
 // draw all sprites
 void refresh_sprites() {
   byte i;
@@ -496,6 +582,23 @@ byte get_closest_ladder(byte player_x, byte floor_index) {
   if (x) return x;
   x = is_ladder_close(player_x, floor->ladder2);
   if (x) return x;
+  x = is_ladder_close(player_x, floor->ladder3);
+  if (x) return x;
+  x = is_ladder_close(player_x, floor->ladder4);
+  if (x) return x;
+  x = is_ladder_close(player_x, floor->ladder5);
+  if (x) return x;
+   x = is_ladder_close(player_x, floor->ladder6);
+  if (x) return x;
+   x = is_ladder_close(player_x, floor->ladder7);
+  if (x) return x;
+   x = is_ladder_close(player_x, floor->ladder8);
+  if (x) return x;
+   x = is_ladder_close(player_x, floor->ladder9);
+  if (x) return x;
+   x = is_ladder_close(player_x, floor->ladder10);
+  if (x) return x;
+
   return 0;
 }
 
@@ -677,14 +780,13 @@ bool check_collision(Actor* a) {
   }
   return false;
 }
-
 ///
 
 const char* RESCUE_TEXT = 
-  "Is this a rescue?\n"
-  "I am just hanging out\n"
-  "on top of this building.\n"
-  "Get lost!!!";
+  "Thanks for saving me \n"
+  "Ben Reilly \n"
+  "Your score was: \n";
+
 
 // draw a message on the screen
 void type_message(const char* charptr) {
@@ -721,12 +823,14 @@ void rescue_scene() {
   refresh_sprites();
   music_stop();
   type_message(RESCUE_TEXT);
-  // wait 2 seconds
-  delay(100);
+  draw_scoreboard_endgame();
+  // wait 1 seconds
+  delay(50);
 }
 
 // game loop
 void play_scene() {
+  
   byte i;
   // initialize actors array  
   memset(actors, 0, sizeof(actors));
@@ -767,17 +871,17 @@ void play_scene() {
 
 /*{pal:"nes",layout:"nes"}*/
 const char PALETTE[32] = { 
-  0x03,			// background color
+  0x50,			      // background color
 
-  0x11,0x30,0x27, 0x0,	// ladders and pickups
-  0x1c,0x20,0x2c, 0x0,	// floor blocks
-  0x00,0x10,0x20, 0x0,
-  0x06,0x16,0x26, 0x0,
-
-  0x16,0x35,0x24, 0x0,	// enemy sprites
-  0x00,0x37,0x25, 0x0,	// rescue person
-  0x0d,0x2d,0x3a, 0x0,
-  0x0d,0x27,0x2a	// player sprites
+  0x11,0xa0,0xc1, 0xa1,     //ladders and pickups
+  0x11,0x20,0x2d, 0x10,    // floor blocks
+  0x06,0x10,0x1c, 0x1,
+  0x06,0x16,0x2d, 0x30,
+ 
+  0xdd,0xdd,0xdd, 0xdd,	   // enemy sprites
+  0x00,0x37,0x2d, 0x0,	  // rescue person
+  0x0d,0x2d,0x1a, 0x0,
+  0x16,0x20,0x11,	 // player sprites
 };
 
 // set up PPU
@@ -790,6 +894,7 @@ void setup_graphics() {
   vrambuf_clear();
   set_vram_update(updbuf);
   ppu_on_all();
+  
 }
 
 // set up famitone library
@@ -801,6 +906,7 @@ void setup_sounds() {
 
 // main program
 void main() {
+  
   setup_sounds();		// init famitone library
   while (1) {
     setup_graphics();		// setup PPU, clear screen
@@ -808,5 +914,6 @@ void main() {
     make_floors();		// make random level
     music_play(0);		// start the music
     play_scene();		// play the level
+
   }
 }
