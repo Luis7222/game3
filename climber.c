@@ -32,18 +32,17 @@ extern char demo_sounds[];
 typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 
 ///// DEFINES
-
 #define COLS 30		// floor width in tiles
 #define ROWS 60		// total scrollable height in tiles
 
-#define MAX_FLOORS 15		// total # of floors in a stage
+#define MAX_FLOORS 2		// total # of floors in a stage
 #define GAPSIZE 4		// gap size in tiles
 #define BOTTOM_FLOOR_Y 2	// offset for bottommost floor
 
-#define MAX_ACTORS 8		// max # of moving actors
-#define SCREEN_Y_BOTTOM 208	// bottom of screen in pixels
-#define ACTOR_MIN_X 16		// leftmost position of actor
-#define ACTOR_MAX_X 228		// rightmost position of actor
+#define MAX_ACTOR 1		// max # of moving actors
+#define SCREEN_Y_BOTTOM 209	// bottom of screen in pixels
+#define ACTOR_MIN_X 1		// leftmost position of actor
+#define ACTOR_MAX_X 28		// rightmost position of actor
 #define ACTOR_SCROLL_UP_Y 110	// min Y position to scroll up
 #define ACTOR_SCROLL_DOWN_Y 140	// max Y position to scroll down
 #define JUMP_VELOCITY 20	// Y velocity when jumping
@@ -51,7 +50,6 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 // constants for various tiles
 #define CH_BORDER 0x40
 #define CH_FLOOR 0xf4
-#define CH_LADDER 0xac
 #define CH_ITEM 0xc4
 #define CH_BLANK 0x20
 #define CH_BASEMENT 0x97
@@ -160,16 +158,6 @@ typedef struct Floor {
   byte ypos;		// # of tiles from ground
   int height:4;		// # of tiles to next floor
   int gap:4;		// X position of gap
-  int ladder1:4;	// X position of first ladder
-  int ladder2:4;	// X position of second ladder
-  int ladder3:4;	// X position of third ladder
-  int ladder4:4;	// X position of fouth ladder
-  int ladder5:4;	// X position of fith ladder
-  int ladder6:4;	// X position of six ladder
-  int ladder7:4;	// X position of seventh ladder
-  int ladder8:4;	// X position of eigth ladder
-  int ladder9:4;	// X position of nine ladder
-  int ladder10:4;	// X position of tenth ladder
   int objtype:5;	// item type (FloorItem)
   int objpos:4;		// X position of object
 } Floor;
@@ -202,44 +190,8 @@ void make_floors() {
   Floor* prevlev = &floors[0];
   for (i=0; i<MAX_FLOORS; i++) {
     Floor* lev = &floors[i];
-    lev->height = rndint(2,5)*2;
-    do {
-      // only have gaps in higher floors
-      lev->gap = i>=5 ? rndint(0,13) : 0;
-    } while (ladder_in_gap(prevlev->ladder1, lev->gap) || 
-             ladder_in_gap(prevlev->ladder2, lev->gap) || 
-             ladder_in_gap(prevlev->ladder3, lev->gap) ||
-             ladder_in_gap(prevlev->ladder4, lev->gap) ||
-             ladder_in_gap(prevlev->ladder5, lev->gap) ||
-             ladder_in_gap(prevlev->ladder6, lev->gap) ||
-             ladder_in_gap(prevlev->ladder7, lev->gap) ||
-             ladder_in_gap(prevlev->ladder8, lev->gap) ||
-             ladder_in_gap(prevlev->ladder9, lev->gap) ||
-             ladder_in_gap(prevlev->ladder10, lev->gap));
-
-    do {
-      lev->ladder1 = rndint(1,14);
-      lev->ladder2 = rndint(1,14);
-      lev->ladder3 = rndint(1,14);
-      lev->ladder4 = rndint(1,14);
-      lev->ladder5 = rndint(1,14);
-      lev->ladder6 = rndint(1,14);
-      lev->ladder7 = rndint(1,14);
-      lev->ladder8 = rndint(1,14);
-      lev->ladder9 = rndint(1,14);
-      lev->ladder10 = rndint(1,14);
-
-
-    } while (ladder_in_gap(lev->ladder1, lev->gap) || 
-             ladder_in_gap(lev->ladder2, lev->gap) || 
-             ladder_in_gap(lev->ladder3, lev->gap) ||
-             ladder_in_gap(lev->ladder4, lev->gap) ||
-             ladder_in_gap(lev->ladder5, lev->gap) ||
-             ladder_in_gap(lev->ladder6, lev->gap) ||
-             ladder_in_gap(lev->ladder7, lev->gap) ||
-             ladder_in_gap(lev->ladder8, lev->gap) ||
-             ladder_in_gap(lev->ladder9, lev->gap) ||
-	     ladder_in_gap(lev->ladder10, lev->gap));
+    lev->height = rndint(20,20)*2;
+  
     if (i > 0) {
       lev->objtype = rndint(1,4);
       do {
@@ -253,16 +205,6 @@ void make_floors() {
   // top floor is special
   floors[MAX_FLOORS-1].height = 15;
   floors[MAX_FLOORS-1].gap = 0;
-  floors[MAX_FLOORS-1].ladder1 = 0;
-  floors[MAX_FLOORS-1].ladder2 = 0;
-  floors[MAX_FLOORS-1].ladder3 = 0;
-  floors[MAX_FLOORS-1].ladder4 = 0;
-  floors[MAX_FLOORS-1].ladder5 = 0;
-  floors[MAX_FLOORS-1].ladder6 = 0;
-  floors[MAX_FLOORS-1].ladder7 = 0;
-  floors[MAX_FLOORS-1].ladder8 = 0;
-  floors[MAX_FLOORS-1].ladder9 = 0;
-  floors[MAX_FLOORS-1].ladder10 = 0;
   floors[MAX_FLOORS-1].objtype = 0;
 }
 
@@ -311,56 +253,9 @@ void draw_floor_line(byte row_height) {
           buf[0] = CH_FLOOR+1;		// left side
           buf[COLS-1] = CH_FLOOR;	// right side
         }
-        // draw ladders
-        if (lev->ladder1) {
-          buf[lev->ladder1*2] = CH_LADDER;	// left
-          buf[lev->ladder1*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder2) {
-          buf[lev->ladder2*2] = CH_LADDER;	// left
-          buf[lev->ladder2*2+1] = CH_LADDER+1;	// right
-        }
-        if (lev->ladder3) {
-          buf[lev->ladder3*2] = CH_LADDER;	// left
-          buf[lev->ladder3*2+1] = CH_LADDER+1; // right
-          
-        }
-         if (lev->ladder4) {
-          buf[lev->ladder4*2] = CH_LADDER;	// left
-          buf[lev->ladder4*2+1] = CH_LADDER+1; // right
-          
-        }
-         if (lev->ladder5) {
-          buf[lev->ladder5*2] = CH_LADDER;	// left
-          buf[lev->ladder5*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder6) {
-          buf[lev->ladder6*2] = CH_LADDER;	// left
-          buf[lev->ladder6*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder7) {
-          buf[lev->ladder7*2] = CH_LADDER;	// left
-          buf[lev->ladder7*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder8) {
-          buf[lev->ladder8*2] = CH_LADDER;	// left
-          buf[lev->ladder8*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder9) {
-          buf[lev->ladder9*2] = CH_LADDER;	// left
-          buf[lev->ladder9*2+1] = CH_LADDER+1; // right
-          
-        }
-        if (lev->ladder10) {
-          buf[lev->ladder10*2] = CH_LADDER;	// left
-          buf[lev->ladder10*2+1] = CH_LADDER+1; // right
-          
-        }
+       
+        
+        
       }
       // draw object, if it exists
       if (lev->objtype) {
@@ -429,9 +324,9 @@ void set_scroll_pixel_yy(int yy) {
   if ((yy & 7) == 0) {
     // scrolling upward or downward?
     if (yy > scroll_pixel_yy)
-      draw_floor_line(scroll_tile_y + 30);	// above
+      draw_floor_line(scroll_tile_y + 10);	// above
     else
-      draw_floor_line(scroll_tile_y - 30);	// below
+      draw_floor_line(scroll_tile_y - 10);	// below
   }
   // set scroll variables
   scroll_pixel_yy = yy;		// get scroll pos. in pixels
@@ -450,7 +345,7 @@ void refresh_floor(byte floor) {
 ///// ACTORS
 
 typedef enum ActorState {
-  INACTIVE, STANDING, WALKING, CLIMBING, JUMPING, FALLING, PACING
+  CLIMBING, CLIMBING_SIDE, WALKING
 };
 
 typedef enum ActorType {
@@ -470,15 +365,15 @@ typedef struct Actor {
   int onscreen:1;	// is actor onscreen?
 } Actor;
 
-Actor actors[MAX_ACTORS];	// all actors
+Actor actors[MAX_ACTOR];	// all actors
 
 // creete actors on floor_index, if slot is empty
 void create_actors_on_floor(byte floor_index) {
-  byte actor_index = (floor_index % (MAX_ACTORS-1)) + 1;
+  byte actor_index = (floor_index % (MAX_ACTOR)) + 1;
   struct Actor* a = &actors[actor_index];
   if (!a->onscreen) {
     Floor *floor = &floors[floor_index];
-    a->state = STANDING;
+    a->state = CLIMBING;
     a->x = rand8();
     a->yy = get_floor_yy(floor_index);
     a->floor = floor_index;
@@ -486,7 +381,7 @@ void create_actors_on_floor(byte floor_index) {
     // rescue person on top of the building
     if (floor_index == MAX_FLOORS-1) {
       a->name = ACTOR_RESCUE;
-      a->state = PACING;
+      a->state = CLIMBING;
       a->x = 0;
       a->pal = 1;
     }
@@ -507,27 +402,13 @@ void draw_actor(byte i) {
   }
   dir = a->dir;
   switch (a->state) {
-    case INACTIVE:
-      a->onscreen = 0;
-      return; // inactive, offscreen
-    case STANDING:
-      meta = dir ? playerLStand : playerRStand;
-      break;
-    case WALKING:
-      meta = playerRunSeq[((a->x >> 1) & 7) + (dir?0:8)];
-      break;
-    case JUMPING:
-      meta = dir ? playerLJump : playerRJump;
-      break;
-    case FALLING:
-      meta = dir ? playerLSad : playerRSad;
+    case CLIMBING_SIDE:
+        meta = playerRunSeq[((a->x >> 1) & 7) + (dir?0:8)];
       break;
     case CLIMBING:
       meta = (a->yy & 4) ? playerLClimb : playerRClimb;
       break;
-    case PACING:
-      meta = personToSave;
-      break;
+  
   }
   // set sprite values, draw sprite
   x = a->x;
@@ -556,7 +437,7 @@ void refresh_sprites() {
   // reset sprite index to 0
   oam_off = 0;
   // draw all actors
-  for (i=0; i<MAX_ACTORS; i++)
+  for (i=0; i<MAX_ACTOR; i++)
     draw_actor(i);
   // draw scoreboard
   draw_scoreboard();
@@ -564,55 +445,8 @@ void refresh_sprites() {
   oam_hide_rest(oam_off);
 }
 
-// if ladder is close to X position, return ladder X position, otherwise 0
-byte is_ladder_close(byte actor_x, byte ladder_pos) {
-  byte ladder_x;
-  if (ladder_pos == 0)
-    return 0;
-  ladder_x = ladder_pos * 16;
-  return ((byte)(actor_x - ladder_x) < 16) ? ladder_x : 0;
-}
 
-// get the closest ladder to the player
-byte get_closest_ladder(byte player_x, byte floor_index) {
-  Floor* floor = &floors[floor_index];
-  byte x;
-  if (floor_index >= MAX_FLOORS) return 0;
-  x = is_ladder_close(player_x, floor->ladder1);
-  if (x) return x;
-  x = is_ladder_close(player_x, floor->ladder2);
-  if (x) return x;
-  x = is_ladder_close(player_x, floor->ladder3);
-  if (x) return x;
-  x = is_ladder_close(player_x, floor->ladder4);
-  if (x) return x;
-  x = is_ladder_close(player_x, floor->ladder5);
-  if (x) return x;
-   x = is_ladder_close(player_x, floor->ladder6);
-  if (x) return x;
-   x = is_ladder_close(player_x, floor->ladder7);
-  if (x) return x;
-   x = is_ladder_close(player_x, floor->ladder8);
-  if (x) return x;
-   x = is_ladder_close(player_x, floor->ladder9);
-  if (x) return x;
-   x = is_ladder_close(player_x, floor->ladder10);
-  if (x) return x;
 
-  return 0;
-}
-
-// put the player on the ladder, and move up or down (floor_adjust)
-byte mount_ladder(Actor* player, signed char floor_adjust) {
-  byte x = get_closest_ladder(player->x, player->floor + floor_adjust);
-  if (x) {
-    player->x = x + 8;
-    player->state = CLIMBING;
-    player->floor += floor_adjust;
-    return 1;
-  } else
-    return 0;
-}
 
 // should we scroll the screen upward?
 void check_scroll_up() {
@@ -628,13 +462,7 @@ void check_scroll_down() {
   }
 }
 
-// actor falls down a floor
-void fall_down(struct Actor* actor) {
-  actor->floor--;
-  actor->state = FALLING;
-  actor->xvel = 0;
-  actor->yvel = 0;
-}
+
 
 // move an actor (player or enemies)
 // joystick - game controller mask
@@ -642,31 +470,20 @@ void fall_down(struct Actor* actor) {
 void move_actor(struct Actor* actor, byte joystick, bool scroll) {
   switch (actor->state) {
       
-    case STANDING:
-    case WALKING:
+case CLIMBING_SIDE:
       // left/right has priority over climbing
-      if (joystick & PAD_A) {
-        actor->state = JUMPING;
-        actor->xvel = 0;
-        actor->yvel = JUMP_VELOCITY;
-        if (joystick & PAD_LEFT) actor->xvel = -1;
-        if (joystick & PAD_RIGHT) actor->xvel = 1;
-        // play sound for player
-        if (scroll) sfx_play(SND_JUMP,0);
-      } else if (joystick & PAD_LEFT) {
+       if (joystick & PAD_LEFT) {
         actor->x--;
         actor->dir = 1;
-        actor->state = WALKING;
+        actor->state = CLIMBING_SIDE;
       } else if (joystick & PAD_RIGHT) {
         actor->x++;
         actor->dir = 0;
-        actor->state = WALKING;
-      } else if (joystick & PAD_UP) {
-        mount_ladder(actor, 0); // state -> CLIMBING
-      } else if (joystick & PAD_DOWN) {
-        mount_ladder(actor, -1); // state -> CLIMBING, floor -= 1
-      } else {
-        actor->state = STANDING;
+        actor->state = CLIMBING_SIDE;
+      } 
+      
+      else {
+        actor->state = CLIMBING;
       }
       if (scroll) {
         check_scroll_up();
@@ -678,13 +495,13 @@ void move_actor(struct Actor* actor, byte joystick, bool scroll) {
       if (joystick & PAD_UP) {
       	if (actor->yy >= get_ceiling_yy(actor->floor)) {
           actor->floor++;
-          actor->state = STANDING;
+          actor->state = CLIMBING;
         } else {
           actor->yy++;
         }
       } else if (joystick & PAD_DOWN) {
         if (actor->yy <= get_floor_yy(actor->floor)) {
-          actor->state = STANDING;
+          actor->state = CLIMBING;
         } else {
           actor->yy--;
         }
@@ -695,29 +512,11 @@ void move_actor(struct Actor* actor, byte joystick, bool scroll) {
       }
       break;
       
-    case FALLING:
-      if (scroll) {
-        check_scroll_up();
-        check_scroll_down();
-      }
-    case JUMPING:
-      actor->x += actor->xvel;
-      actor->yy += actor->yvel/4;
-      actor->yvel -= 1;
-      if (actor->yy <= get_floor_yy(actor->floor)) {
-	actor->yy = get_floor_yy(actor->floor);
-        actor->state = STANDING;
-      }
-      break;
   }
   // don't allow player to travel past left/right edges of screen
   if (actor->x > ACTOR_MAX_X) actor->x = ACTOR_MAX_X; // we wrapped around right edge
   if (actor->x < ACTOR_MIN_X) actor->x = ACTOR_MIN_X;
-  // if player lands in a gap, they fall (switch to JUMPING state)
-  if (actor->state <= WALKING && 
-      is_in_gap(actor->x, floors[actor->floor].gap)) {
-    fall_down(actor);
-  }
+ 
 }
 
 // should we pickup an object? only player does this
@@ -725,7 +524,7 @@ void pickup_object(Actor* actor) {
   Floor* floor = &floors[actor->floor];
   byte objtype = floor->objtype;
   // only pick up if there's an object, and if we're walking or standing
-  if (objtype && actor->state <= WALKING) {
+  if (objtype && actor->state <= CLIMBING_SIDE) {
     byte objx = floor->objpos * 16;
     // is the actor close to the object?
     if (actor->x >= objx && actor->x < objx+16) {
@@ -735,7 +534,6 @@ void pickup_object(Actor* actor) {
       // did we hit a mine?
       if (objtype == ITEM_MINE) {
         // we hit a mine, fall down
-        fall_down(actor);
         sfx_play(SND_HIT,0);
         vbright = 8; // flash
       } else {
@@ -765,10 +563,8 @@ bool check_collision(Actor* a) {
   byte afloor = a->floor;
   // can't fall through basement
   if (afloor == 0) return false;
-  // can't fall if already falling
-  if (a->state == FALLING) return false;
   // iterate through entire list of actors
-  for (i=1; i<MAX_ACTORS; i++) {
+  for (i=1; i<MAX_ACTOR; i++) {
     Actor* b = &actors[i];
     // actors must be on same floor and within 8 pixels
     if (b->onscreen &&
@@ -782,7 +578,7 @@ bool check_collision(Actor* a) {
 }
 ///
 
-const char* RESCUE_TEXT = 
+const char* END_TEXT = 
   "Thanks for saving me \n"
   "Ben Reilly \n"
   "Your score was: \n";
@@ -807,22 +603,19 @@ void type_message(const char* charptr) {
       vrambuf_put(getntaddr(x, y), &ch, 1);
       x++;
     }
-    // typewriter sound
-    sfx_play(SND_HIT,0);
-    // flush buffer and wait a few frames
-    vrambuf_flush();
-    delay(5);
+ 
+    delay(1);
   }
 }
 
 // reward scene when player reaches roof
-void rescue_scene() {
+void end_scene() {
   // make player face to the left
   actors[0].dir = 1;
-  actors[0].state = STANDING;
+  actors[0].state = CLIMBING;
   refresh_sprites();
   music_stop();
-  type_message(RESCUE_TEXT);
+  type_message(END_TEXT);
   draw_scoreboard_endgame();
   // wait 1 seconds
   delay(50);
@@ -834,7 +627,7 @@ void play_scene() {
   byte i;
   // initialize actors array  
   memset(actors, 0, sizeof(actors));
-  actors[0].state = STANDING;
+  actors[0].state = CLIMBING;
   actors[0].name = ACTOR_PLAYER;
   actors[0].pal = 3;
   actors[0].x = 64;
@@ -851,22 +644,17 @@ void play_scene() {
     refresh_sprites();
     move_player();
     // move all the actors
-    for (i=1; i<MAX_ACTORS; i++) {
+    for (i=1; i<MAX_ACTOR; i++) {
       move_actor(&actors[i], rand8(), false);
     }
-    // see if the player hit another actor
-    if (check_collision(&actors[0])) {
-      fall_down(&actors[0]);
-      sfx_play(SND_HIT,0);
-      vbright = 8; // flash
-    }
+  
     // flash effect
     if (vbright > 4) {
       pal_bright(--vbright);
     }
   }
   // player reached goal; reward scene  
-  rescue_scene();
+  end_scene();
 }
 
 /*{pal:"nes",layout:"nes"}*/
