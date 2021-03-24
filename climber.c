@@ -28,6 +28,13 @@ extern char danger_streets_music_data[];
 //#link "demosounds.s"
 extern char demo_sounds[];
 
+extern const byte city_back1_pal[16];
+extern const byte city_back1_rle[];
+extern const byte city_back2_pal[16];
+extern const byte city_back2_rle[];
+
+
+
 // indices of sound effects (0..3)
 typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 
@@ -45,11 +52,10 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define ACTOR_MAX_X 28		// rightmost position of actor
 #define ACTOR_SCROLL_UP_Y 110	// min Y position to scroll up
 #define ACTOR_SCROLL_DOWN_Y 140	// max Y position to scroll down
-#define JUMP_VELOCITY 20	// Y velocity when jumping
 
 // constants for various tiles
 #define CH_BORDER 0x40
-#define CH_FLOOR 0xf4
+#define CH_FLOOR 0x5
 #define CH_ITEM 0xc4
 #define CH_BLANK 0x20
 #define CH_BASEMENT 0x97
@@ -156,10 +162,10 @@ const unsigned char* const playerRunSeq[16] = {
 // struct definition for a single floor
 typedef struct Floor {
   byte ypos;		// # of tiles from ground
-  int height:4;		// # of tiles to next floor
+  int height:5;		// # of tiles to next floor
   int gap:4;		// X position of gap
   int objtype:5;	// item type (FloorItem)
-  int objpos:4;		// X position of object
+  int objpos:3;		// X position of object
 } Floor;
 
 // various items the player can pick up
@@ -187,20 +193,20 @@ bool ladder_in_gap(byte x, byte gap) {
 void make_floors() {
   byte i;
   byte y = BOTTOM_FLOOR_Y;
-  Floor* prevlev = &floors[0];
+ Floor* prevlev = &floors[0];
   for (i=0; i<MAX_FLOORS; i++) {
     Floor* lev = &floors[i];
-    lev->height = rndint(20,20)*2;
+    lev->height = (20,63)*2;
   
     if (i > 0) {
-      lev->objtype = rndint(1,4);
+      lev->objtype = (1,4);
       do {
-        lev->objpos = rndint(1,14);
+        lev->objpos = (1,14);
       } while (ladder_in_gap(lev->objpos, lev->gap));
     }
     lev->ypos = y;
     y += lev->height;
-    prevlev = lev;
+  //  prevlev = lev;
   }
   // top floor is special
   floors[MAX_FLOORS-1].height = 15;
@@ -349,7 +355,7 @@ typedef enum ActorState {
 };
 
 typedef enum ActorType {
-  ACTOR_PLAYER, ACTOR_RESCUE
+  ACTOR_PLAYER, ACTOR_END
 };
 
 typedef struct Actor {
@@ -380,7 +386,7 @@ void create_actors_on_floor(byte floor_index) {
     a->onscreen = 1;
     // rescue person on top of the building
     if (floor_index == MAX_FLOORS-1) {
-      a->name = ACTOR_RESCUE;
+      a->name = ACTOR_END;
       a->state = CLIMBING;
       a->x = 0;
       a->pal = 1;
@@ -698,7 +704,6 @@ void main() {
   setup_sounds();		// init famitone library
   while (1) {
     setup_graphics();		// setup PPU, clear screen
-    sfx_play(SND_START,0);	// play starting sound
     make_floors();		// make random level
     music_play(0);		// start the music
     play_scene();		// play the level
