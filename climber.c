@@ -560,6 +560,8 @@ const char PALETTE[32] = {
   0x16,0x20,0x11,	 // player sprites
 };
 
+
+
 // set up PPU
 void setup_graphics() {
  // clear sprites
@@ -568,9 +570,9 @@ void setup_graphics() {
   pal_all(PALETTE);
   // turn on PPU
   ppu_on_all();
-//#link "city_back1.s"
+//#link "back1.s"
 
-//#link "city_back2.s"
+//#link "back2.s"
 
   
 }
@@ -583,7 +585,7 @@ void show_title_screen(const byte* pal, const byte* rle,const byte* rle2) {
   // unpack nametable into the VRAM
   vram_adr(0x2000);
   vram_unrle(rle);
- vram_adr(0x2400);
+  vram_adr(0x2400);
   vram_unrle(rle2);
   // enable rendering
   ppu_on_all();
@@ -599,9 +601,8 @@ void setup_sounds() {
 
 // main program
 void main() {
-    show_title_screen(back1_pal, back1_rle,back2_rle);
-
-//  setup_sounds();		// init famitone library
+   // show_title_screen(back1_pal, back1_rle,back2_rle);
+ // setup_sounds();		// init famitone library
   while (1) {
     setup_graphics();		// setup PPU, clear screen
     make_floors();		// make random level
