@@ -21,6 +21,7 @@
 
 // famitone2 library
 //#link "famitone2.s"
+#define NES_MIRRORING 1
 
 // music and sfx
 //#link "music_dangerstreets.s"
@@ -28,11 +29,11 @@ extern char danger_streets_music_data[];
 //#link "demosounds.s"
 extern char demo_sounds[];
 
+//Backgrounds/ Name tables
 extern const byte city_back1_pal[16];
 extern const byte city_back1_rle[];
 extern const byte city_back2_pal[16];
 extern const byte city_back2_rle[];
-
 
 
 // indices of sound effects (0..3)
@@ -139,13 +140,6 @@ DEF_METASPRITE_2x2_FLIP(playerLJump, 0xe8, 0);
 DEF_METASPRITE_2x2_FLIP(playerLClimb, 0xec, 0);
 DEF_METASPRITE_2x2_FLIP(playerLSad, 0xf0, 0);
 
-// rescuee at top of building
-const unsigned char personToSave[]={
-        0,      0,      (0xba)+0,   3, 
-        0,      8,      (0xba)+2,   0, 
-        8,      0,      (0xba)+1,   3, 
-        8,      8,      (0xba)+3,   0, 
-        128};
 
 // player run sequence
 const unsigned char* const playerRunSeq[16] = {
@@ -167,9 +161,6 @@ typedef struct Floor {
   int objtype:5;	// item type (FloorItem)
   int objpos:3;		// X position of object
 } Floor;
-
-// various items the player can pick up
-typedef enum FloorItem { ITEM_NONE, ITEM_MINE, ITEM_HEART, ITEM_POWER };
 
 // array of floors
 Floor floors[MAX_FLOORS];
@@ -254,27 +245,10 @@ void draw_floor_line(byte row_height) {
       } else {
         // clear buffer
         memset(buf, 0, sizeof(buf));
-        // draw walls
-        if (floor < MAX_FLOORS-1) {
-          buf[0] = CH_FLOOR+1;		// left side
-          buf[COLS-1] = CH_FLOOR;	// right side
-        }
-       
-        
+    
         
       }
-      // draw object, if it exists
-      if (lev->objtype) {
-        byte ch = lev->objtype*4 + CH_ITEM;
-        if (dy == 2) {
-          buf[lev->objpos*2] = ch+1;	// bottom-left
-          buf[lev->objpos*2+1] = ch+3;	// bottom-right
-        }
-        else if (dy == 3) {
-          buf[lev->objpos*2] = ch+0;	// top-left
-          buf[lev->objpos*2+1] = ch+2;	// top-right
-        }
-      }
+      
       break;
     }
   }
@@ -297,7 +271,6 @@ void draw_floor_line(byte row_height) {
   // copy line to screen buffer
   vrambuf_put(addr, buf, COLS);
   // create actors on this floor, if needed
-  // TODO: maybe this happens too early?
   if (dy == 0 && (floor >= 2)) {
     create_actors_on_floor(floor);
   }
@@ -309,8 +282,6 @@ void draw_entire_stage() {
   byte y;
   for (y=0; y<ROWS; y++) {
     draw_floor_line(y);
-    // allow buffer to flush, delaying a frame
-    vrambuf_flush();
   }
 }
 
@@ -341,14 +312,7 @@ void set_scroll_pixel_yy(int yy) {
   scroll(0, 479 - ((yy + 224) % 480));
 }
 
-// redraw a floor when object picked up
-void refresh_floor(byte floor) {
-  byte y = floors[floor].ypos;	// get floor bottom coordinate
-  draw_floor_line(y+2);		// redraw 3rd line
-  draw_floor_line(y+3);		// redraw 4th line
-}
 
-///// ACTORS
 
 typedef enum ActorState {
   CLIMBING, CLIMBING_SIDE, WALKING
@@ -363,8 +327,6 @@ typedef struct Actor {
   byte x;		// X position in pixels (8 bit)
   byte floor;		// floor index
   byte state;		// ActorState
-  sbyte yvel;		// Y velocity (when jumping)
-  sbyte xvel;		// X velocity (when jumping)
   int name:2;		// ActorType (2 bits)
   int pal:9;		// palette color (2 bits)
   int dir:1;		// direction (0=right, 1=left)
@@ -433,10 +395,7 @@ void draw_scoreboard() {
   oam_off = oam_spr(24+0, 24, '0'+(score >> 4), 1, oam_off);
   oam_off = oam_spr(24+8, 24, '0'+(score & 0xf), 1, oam_off);
 }
-void draw_scoreboard_endgame(){
-   oam_off = oam_spr(135+0, 78, '0'+(score >> 4), 2, oam_off);
-  oam_off = oam_spr(135+8, 78, '0'+(score & 0xf), 2, oam_off);
-}
+
 // draw all sprites
 void refresh_sprites() {
   byte i;
@@ -525,37 +484,10 @@ case CLIMBING_SIDE:
  
 }
 
-// should we pickup an object? only player does this
-void pickup_object(Actor* actor) {
-  Floor* floor = &floors[actor->floor];
-  byte objtype = floor->objtype;
-  // only pick up if there's an object, and if we're walking or standing
-  if (objtype && actor->state <= CLIMBING_SIDE) {
-    byte objx = floor->objpos * 16;
-    // is the actor close to the object?
-    if (actor->x >= objx && actor->x < objx+16) {
-      // clear the item from the floor and redraw
-      floor->objtype = 0;
-      refresh_floor(actor->floor);
-      // did we hit a mine?
-      if (objtype == ITEM_MINE) {
-        // we hit a mine, fall down
-        sfx_play(SND_HIT,0);
-        vbright = 8; // flash
-      } else {
-        // we picked up an object, add to score
-        score = bcd_add(score, 1);
-        sfx_play(SND_COIN,0);
-      }
-    }
-  }
-}
-
 // read joystick 0 and move the player
 void move_player() {
   byte joy = pad_poll(0);
   move_actor(&actors[0], joy, true);
-  pickup_object(&actors[0]);
 }
 
 // returns absolute value of x
@@ -563,26 +495,7 @@ byte iabs(int x) {
   return x >= 0 ? x : -x;
 }
 
-// check to see if actor collides with any non-player actor
-bool check_collision(Actor* a) {
-  byte i;
-  byte afloor = a->floor;
-  // can't fall through basement
-  if (afloor == 0) return false;
-  // iterate through entire list of actors
-  for (i=1; i<MAX_ACTOR; i++) {
-    Actor* b = &actors[i];
-    // actors must be on same floor and within 8 pixels
-    if (b->onscreen &&
-        afloor == b->floor && 
-        iabs(a->yy - b->yy) < 8 && 
-        iabs(a->x - b->x) < 8) {
-      return true;
-    }
-  }
-  return false;
-}
-///
+
 
 const char* END_TEXT = 
   "Thanks for saving me \n"
@@ -616,13 +529,11 @@ void type_message(const char* charptr) {
 
 // reward scene when player reaches roof
 void end_scene() {
-  // make player face to the left
   actors[0].dir = 1;
   actors[0].state = CLIMBING;
   refresh_sprites();
   music_stop();
   type_message(END_TEXT);
-  draw_scoreboard_endgame();
   // wait 1 seconds
   delay(50);
 }
@@ -665,31 +576,48 @@ void play_scene() {
 
 /*{pal:"nes",layout:"nes"}*/
 const char PALETTE[32] = { 
-  0x50,			      // background color
+  0x10,			      
 
-  0x11,0xa0,0xc1, 0xa1,     //ladders and pickups
-  0x11,0x20,0x2d, 0x10,    // floor blocks
+  0x00,0x00,0xc1, 0xa1,     
+  0x11,0x20,0x2d, 0x10,    
   0x06,0x10,0x1c, 0x1,
   0x06,0x16,0x2d, 0x30,
  
-  0xdd,0xdd,0xdd, 0xdd,	   // enemy sprites
-  0x00,0x37,0x2d, 0x0,	  // rescue person
-  0x0d,0x2d,0x1a, 0x0,
+  0xdd,0xdd,0xdd, 0xdd,	  
+  0x00,0x37,0x2d, 0x00,	  
+  0x00,0x00,0x00, 0x00,
   0x16,0x20,0x11,	 // player sprites
 };
 
 // set up PPU
 void setup_graphics() {
-  ppu_off();
-  oam_clear();
+ // clear sprites
+  oam_hide_rest(0);
+  // set palette colors
   pal_all(PALETTE);
-  vram_adr(0x2000);
-  vram_fill(CH_BLANK, 0x1000);
-  vrambuf_clear();
-  set_vram_update(updbuf);
+  // turn on PPU
   ppu_on_all();
+//#link "city_back1.s"
+
+//#link "city_back2.s"
+
   
 }
+void show_title_screen(const byte* pal, const byte* rle,const byte* rle2) {
+  // disable rendering
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  
+  // unpack nametable into the VRAM
+  vram_adr(0x2000);
+  vram_unrle(rle);
+ vram_adr(0x2400);
+  vram_unrle(rle2);
+  // enable rendering
+  ppu_on_all();
+}
+  
 
 // set up famitone library
 void setup_sounds() {
@@ -700,8 +628,9 @@ void setup_sounds() {
 
 // main program
 void main() {
-  
-  setup_sounds();		// init famitone library
+    show_title_screen(city_back1_pal, city_back1_rle,city_back2_rle);
+
+//  setup_sounds();		// init famitone library
   while (1) {
     setup_graphics();		// setup PPU, clear screen
     make_floors();		// make random level
