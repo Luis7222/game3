@@ -315,7 +315,7 @@ void set_scroll_pixel_yy(int yy) {
 
 
 typedef enum ActorState {
-  CLIMBING, CLIMBING_SIDE, WALKING
+  CLIMBING, WALKING
 };
 
 typedef enum ActorType {
@@ -370,8 +370,8 @@ void draw_actor(byte i) {
   }
   dir = a->dir;
   switch (a->state) {
-    case CLIMBING_SIDE:
-        meta = playerRunSeq[((a->x >> 1) & 7) + (dir?0:8)];
+    case WALKING:
+      meta = playerRunSeq[((a->x >> 1) & 7) + (dir?0:8)];
       break;
     case CLIMBING:
       meta = (a->yy & 4) ? playerLClimb : playerRClimb;
@@ -433,30 +433,31 @@ void check_scroll_down() {
 // joystick - game controller mask
 // scroll - if true, we should scroll screen (is player)
 void move_actor(struct Actor* actor, byte joystick, bool scroll) {
-  switch (actor->state) {
+ 
       
-case CLIMBING_SIDE:
       // left/right has priority over climbing
        if (joystick & PAD_LEFT) {
         actor->x--;
         actor->dir = 1;
-        actor->state = CLIMBING_SIDE;
+        actor->state = WALKING;
       } else if (joystick & PAD_RIGHT) {
         actor->x++;
         actor->dir = 0;
-        actor->state = CLIMBING_SIDE;
-      } 
-      
-      else {
-        actor->state = CLIMBING;
+        actor->state = WALKING;
+      } else if (joystick & PAD_UP) {
+        actor->state = CLIMBING; // state -> CLIMBING
+      } else if (joystick & PAD_DOWN) {
+        actor->state = CLIMBING; // state -> CLIMBING, floor -= 1
+      } else {
+        actor->state = WALKING;
       }
       if (scroll) {
         check_scroll_up();
         check_scroll_down();
       }
-      break;
       
-    case CLIMBING:
+      
+    
       if (joystick & PAD_UP) {
       	if (actor->yy >= get_ceiling_yy(actor->floor)) {
           actor->floor++;
@@ -475,14 +476,14 @@ case CLIMBING_SIDE:
         check_scroll_up();
         check_scroll_down();
       }
-      break;
+      
       
   }
   // don't allow player to travel past left/right edges of screen
-  if (actor->x > ACTOR_MAX_X) actor->x = ACTOR_MAX_X; // we wrapped around right edge
-  if (actor->x < ACTOR_MIN_X) actor->x = ACTOR_MIN_X;
+ // if (actor->x > ACTOR_MAX_X) actor->x = ACTOR_MAX_X; // we wrapped around right edge
+  //if (actor->x < ACTOR_MIN_X) actor->x = ACTOR_MIN_X;
  
-}
+
 
 // read joystick 0 and move the player
 void move_player() {
@@ -497,35 +498,6 @@ byte iabs(int x) {
 
 
 
-const char* END_TEXT = 
-  "Thanks for saving me \n"
-  "Ben Reilly \n"
-  "Your score was: \n";
-
-
-// draw a message on the screen
-void type_message(const char* charptr) {
-  char ch;
-  byte x,y;
-  x = 2;
-  // compute message y position relative to scroll
-  y = ROWS*3 + 39 - scroll_tile_y;
-  // repeat until end of string (0) is read
-  while ((ch = *charptr++)) {
-    while (y >= 60) y -= 60; // compute (y % 60)
-    // newline character? go to start of next line
-    if (ch == '\n') {
-      x = 2;
-      y++;
-    } else {
-      // put character into nametable
-      vrambuf_put(getntaddr(x, y), &ch, 1);
-      x++;
-    }
- 
-    delay(1);
-  }
-}
 
 // reward scene when player reaches roof
 void end_scene() {
@@ -533,7 +505,6 @@ void end_scene() {
   actors[0].state = CLIMBING;
   refresh_sprites();
   music_stop();
-  type_message(END_TEXT);
   // wait 1 seconds
   delay(50);
 }
