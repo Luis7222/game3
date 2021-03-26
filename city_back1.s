@@ -1,16 +1,16 @@
 
-.export _city_back1_pal
-.export _city_back1_rle
+.export _back1_pal
+.export _back1_rle
 
 
 ;;{pal:"nes",layout:"nes"};;
-_city_back1_pal:
+_back1_pal:
  .byte $1C,$10,$00,$30,$1C,$01,$21,$31
  .byte $1C,$16,$30,$06,$1C,$09,$19,$29
  
 ;;
 ;;{w:32,h:30,bpp:8,comp:"rletag",map:"nesnt"};;
-_city_back1_rle:
+_back1_rle:
 
 .byte $03,$00,$03,$40,$08,$09,$03,$05
 .byte $0a,$00,$03,$17,$02,$03,$06,$0b

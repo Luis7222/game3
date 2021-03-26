@@ -30,10 +30,10 @@ extern char danger_streets_music_data[];
 extern char demo_sounds[];
 
 //Backgrounds/ Name tables
-extern const byte city_back1_pal[16];
-extern const byte city_back1_rle[];
-extern const byte city_back2_pal[16];
-extern const byte city_back2_rle[];
+extern const byte back1_pal[16];
+extern const byte back1_rle[];
+extern const byte back2_pal[16];
+extern const byte back2_rle[];
 
 
 // indices of sound effects (0..3)
@@ -628,7 +628,7 @@ void setup_sounds() {
 
 // main program
 void main() {
-    show_title_screen(city_back1_pal, city_back1_rle,city_back2_rle);
+    show_title_screen(back1_pal, back1_rle,back2_rle);
 
 //  setup_sounds();		// init famitone library
   while (1) {
