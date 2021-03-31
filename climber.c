@@ -23,17 +23,20 @@
 //#link "famitone2.s"
 #define NES_MIRRORING 1
 
+
 // music and sfx
 //#link "music_dangerstreets.s"
 extern char danger_streets_music_data[];
 //#link "demosounds.s"
 extern char demo_sounds[];
+//#link "title.s"
 
 //Backgrounds/ Name tables
 extern const byte back1_pal[16];
 extern const byte back1_rle[];
 extern const byte back2_pal[16];
 extern const byte back2_rle[];
+extern const byte title_rle[];
 
 
 // indices of sound effects (0..3)
@@ -599,10 +602,49 @@ void setup_sounds() {
   nmi_set_callback(famitone_update);
 }
 
+
+void show_title(const byte* pal, const byte* rle){
+  
+  int x = 0;   // x scroll position
+  char i;	// actor index
+  char pad;	// controller flags
+  
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  // unpack nametable into the VRAM
+  vram_adr(0x2000);
+  vram_unrle(rle);
+  // enable rendering
+  ppu_on_all();
+
+    
+
+
+while(1){
+  
+     pad = pad_trigger(i);
+   if(pad & PAD_START){
+     sfx_play(0,1);
+   break;
+   }
+}
+
+music_play(0);
+}
+
+
+
 // main program
 void main() {
-   // show_title_screen(back1_pal, back1_rle,back2_rle);
- // setup_sounds();		// init famitone library
+    show_title(back1_pal, title_rle);
+    show_title_screen(back1_pal, back1_rle,back2_rle);
+   // setup_sounds();	// init famitone library
+  
+  
+
+  
+  
   while (1) {
     setup_graphics();		// setup PPU, clear screen
     make_floors();		// make random level
@@ -610,4 +652,12 @@ void main() {
     play_scene();		// play the level
 
   }
+  
+  
 }
+
+
+
+
+
+
