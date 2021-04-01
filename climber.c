@@ -745,7 +745,7 @@ music_play(0);
 void main() {
     show_title(back1_pal, title_rle);
     show_title_screen(back1_pal, back1_rle,back2_rle);
-   // setup_sounds();	// init famitone library
+    setup_sounds();	// init famitone library
    
 
   
