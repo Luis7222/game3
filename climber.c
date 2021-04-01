@@ -63,6 +63,7 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define CH_ITEM 0xc4
 #define CH_BLANK 0x20
 #define CH_BASEMENT 0x97
+#define CH_ITEM 0xc4
 
 ///// GLOBALS
 
@@ -153,16 +154,24 @@ const unsigned char* const playerRunSeq[16] = {
   playerRRun1, playerRRun2, playerRRun3, 
   playerRRun1, playerRRun2,
 };
+// rescuee at top of building
+const unsigned char personToSave[]={
+        0,      0,      (0xba)+0,   3, 
+        0,      8,      (0xba)+2,   0, 
+        8,      0,      (0xba)+1,   3, 
+        8,      8,      (0xba)+3,   0, 
+        128};
 
 ///// GAME LOGIC
+typedef enum FloorItem {ITEM_HEART };
 
 // struct definition for a single floor
 typedef struct Floor {
   byte ypos;		// # of tiles from ground
   int height:5;		// # of tiles to next floor
   int gap:4;		// X position of gap
-  int objtype:5;	// item type (FloorItem)
-  int objpos:3;		// X position of object
+  int objtype:1;	// item type (FloorItem)
+  int objpos:4;		// X position of object
 } Floor;
 
 // array of floors
@@ -202,10 +211,11 @@ void make_floors() {
     y += lev->height;
   //  prevlev = lev;
   }
+  
   // top floor is special
   floors[MAX_FLOORS-1].height = 15;
   floors[MAX_FLOORS-1].gap = 0;
-  floors[MAX_FLOORS-1].objtype = 0;
+  floors[MAX_FLOORS-1].objtype = 1;
 }
 
 // creete actors on floor_index, if slot is empty
@@ -242,10 +252,26 @@ void draw_floor_line(byte row_height) {
             buf[i+1] = CH_FLOOR+3;	// lower-right
           }
         }
+        
+        // draw object, if it exists
+      if (lev->objtype) {
+        byte ch = lev->objtype*4 + CH_ITEM;
+        if (dy == 2) {
+          buf[lev->objpos*2] = ch+1;	// bottom-left
+          buf[lev->objpos*2+1] = ch+3;	// bottom-right
+        }
+        else if (dy == 3) {
+          buf[lev->objpos*2] = ch+0;	// top-left
+          buf[lev->objpos*2+1] = ch+2;	// top-right
+        }
+      }
+        
         // is there a gap? if so, clear bytes
 	if (lev->gap)
           memset(buf+lev->gap*2, 0, GAPSIZE);
-      } else {
+      } 
+      
+      else {
         // clear buffer
         memset(buf, 0, sizeof(buf));
     
@@ -333,7 +359,9 @@ typedef struct Actor {
   int name:2;		// ActorType (2 bits)
   int pal:9;		// palette color (2 bits)
   int dir:1;		// direction (0=right, 1=left)
-  int onscreen:1;	// is actor onscreen?
+  int onscreen:1;
+   sbyte yvel;		// Y velocity (when jumping)
+  sbyte xvel;    // is actor onscreen?
 } Actor;
 
 Actor actors[MAX_ACTOR];	// all actors
@@ -393,12 +421,17 @@ void draw_actor(byte i) {
   return;
 }
 
-// draw the scoreboard, right now just two digits
+// actor falls down a floor
+void fall_down(struct Actor* actor) {
+  actor->floor--;
+  actor->xvel = 0;
+  actor->yvel = 0;
+}
+
 void draw_scoreboard() {
   oam_off = oam_spr(24+0, 24, '0'+(score >> 4), 1, oam_off);
   oam_off = oam_spr(24+8, 24, '0'+(score & 0xf), 1, oam_off);
 }
-
 // draw all sprites
 void refresh_sprites() {
   byte i;
@@ -412,6 +445,38 @@ void refresh_sprites() {
   // hide rest of actors
   oam_hide_rest(oam_off);
 }
+
+// should we pickup an object? only player does this
+void pickup_object(Actor* actor) {
+  Floor* floor = &floors[actor->floor];
+  byte objtype = floor->objtype;
+  // only pick up if there's an object, and if we're walking or standing
+  if (objtype && actor->state <= WALKING) {
+    byte objx = floor->objpos * 16;
+    // is the actor close to the object?
+    if (actor->x >= objx && actor->x < objx+16) {
+      // clear the item from the floor and redraw
+      floor->objtype = 0;
+      //refresh_floor(actor->floor);
+      // did we hit a mine?
+      if (objtype == ITEM_HEART) {
+        // we hit a mine, fall down
+        fall_down(actor);
+        sfx_play(SND_HIT,0);
+        vbright = 8; // flash
+      } else {
+        // we picked up an object, add to score
+        score = bcd_add(score, 1);
+        sfx_play(SND_COIN,0);
+      }
+    }
+  }
+}
+
+
+// draw the scoreboard, right now just two digits
+
+
 
 
 
@@ -492,6 +557,8 @@ void move_actor(struct Actor* actor, byte joystick, bool scroll) {
 void move_player() {
   byte joy = pad_poll(0);
   move_actor(&actors[0], joy, true);
+  pickup_object(&actors[0]);
+
 }
 
 // returns absolute value of x
@@ -504,12 +571,14 @@ byte iabs(int x) {
 
 // reward scene when player reaches roof
 void end_scene() {
+    
   actors[0].dir = 1;
   actors[0].state = CLIMBING;
   refresh_sprites();
   music_stop();
   // wait 1 seconds
   delay(50);
+
 }
 
 // game loop
@@ -576,9 +645,39 @@ void setup_graphics() {
 //#link "back1.s"
 
 //#link "back2.s"
+ 
 
   
 }
+
+
+// draw a message on the screen
+void type_message(const char* charptr) {
+  char ch;
+  byte x,y;
+  x = 2;
+  // compute message y position relative to scroll
+  y = ROWS*3 + 39 - scroll_tile_y;
+  // repeat until end of string (0) is read
+  while ((ch = *charptr++)) {
+    while (y >= 60) y -= 60; // compute (y % 60)
+    // newline character? go to start of next line
+    if (ch == '\n') {
+      x = 2;
+      y++;
+    } else {
+      // put character into nametable
+      vrambuf_put(getntaddr(x, y), &ch, 1);
+      x++;
+    }
+    // typewriter sound
+    sfx_play(SND_HIT,0);
+    // flush buffer and wait a few frames
+    vrambuf_flush();
+    delay(5);
+  }
+}
+
 void show_title_screen(const byte* pal, const byte* rle,const byte* rle2) {
   // disable rendering
   ppu_off();
@@ -602,6 +701,8 @@ void setup_sounds() {
   nmi_set_callback(famitone_update);
 }
 
+// reward scene when player reaches roof
+
 
 void show_title(const byte* pal, const byte* rle){
   
@@ -617,6 +718,7 @@ void show_title(const byte* pal, const byte* rle){
   vram_unrle(rle);
   // enable rendering
   ppu_on_all();
+
 
     
 
