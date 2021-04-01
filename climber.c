@@ -126,6 +126,9 @@ const unsigned char name[]={\
         0,      8,      (code)+3,   (pal)|OAM_FLIP_H, \
         128};
 
+
+
+
 // right-facing
 DEF_METASPRITE_2x2(playerRStand, 0xd8, 0);
 DEF_METASPRITE_2x2(playerRRun1, 0xdc, 0);
@@ -569,6 +572,7 @@ byte iabs(int x) {
 
 
 
+
 // reward scene when player reaches roof
 void end_scene() {
     
@@ -742,8 +746,7 @@ void main() {
     show_title(back1_pal, title_rle);
     show_title_screen(back1_pal, back1_rle,back2_rle);
    // setup_sounds();	// init famitone library
-  
-  
+   
 
   
   
