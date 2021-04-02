@@ -37,6 +37,10 @@ extern const byte back1_rle[];
 extern const byte back2_pal[16];
 extern const byte back2_rle[];
 extern const byte title_rle[];
+extern const byte end_pal[16];
+extern const byte end_rle[];
+
+//#link "end.s"
 
 
 // indices of sound effects (0..3)
@@ -50,7 +54,7 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define GAPSIZE 4		// gap size in tiles
 #define BOTTOM_FLOOR_Y 2	// offset for bottommost floor
 
-#define MAX_ACTOR 1		// max # of moving actors
+#define MAX_ACTOR 9		// max # of moving actors
 #define SCREEN_Y_BOTTOM 209	// bottom of screen in pixels
 #define ACTOR_MIN_X 1		// leftmost position of actor
 #define ACTOR_MAX_X 28		// rightmost position of actor
@@ -173,8 +177,8 @@ typedef struct Floor {
   byte ypos;		// # of tiles from ground
   int height:5;		// # of tiles to next floor
   int gap:4;		// X position of gap
-  int objtype:1;	// item type (FloorItem)
-  int objpos:4;		// X position of object
+  int objtype:2;	// item type (FloorItem)
+  int objpos:1;		// X position of object
 } Floor;
 
 // array of floors
@@ -257,6 +261,7 @@ void draw_floor_line(byte row_height) {
         }
         
         // draw object, if it exists
+     // draw object, if it exists
       if (lev->objtype) {
         byte ch = lev->objtype*4 + CH_ITEM;
         if (dy == 2) {
@@ -268,7 +273,6 @@ void draw_floor_line(byte row_height) {
           buf[lev->objpos*2+1] = ch+2;	// top-right
         }
       }
-        
         // is there a gap? if so, clear bytes
 	if (lev->gap)
           memset(buf+lev->gap*2, 0, GAPSIZE);
@@ -347,11 +351,11 @@ void set_scroll_pixel_yy(int yy) {
 
 
 typedef enum ActorState {
-  CLIMBING, WALKING
+  CLIMBING, WALKING, FALLING
 };
 
 typedef enum ActorType {
-  ACTOR_PLAYER, ACTOR_END
+  ACTOR_PLAYER, ACTOR_END, ACTOR_ENEMY
 };
 
 typedef struct Actor {
@@ -367,7 +371,34 @@ typedef struct Actor {
   sbyte xvel;    // is actor onscreen?
 } Actor;
 
-Actor actors[MAX_ACTOR];	// all actors
+Actor actors[MAX_ACTOR];
+// returns absolute value of x
+byte iabs(int x) {
+  return x >= 0 ? x : -x;
+}
+
+
+// check to see if actor collides with any non-player actor
+bool check_collision(Actor* a) {
+  byte i;
+  byte afloor = a->floor;
+  // can't fall through basement
+  if (afloor == 0) return false;
+  // can't fall if already falling
+  if (a->state == FALLING) return false;
+  // iterate through entire list of actors
+  for (i=1; i<MAX_ACTOR; i++) {
+    Actor* b = &actors[i];
+    // actors must be on same floor and within 8 pixels
+    if (b->onscreen &&
+        afloor == b->floor && 
+        iabs(a->yy - b->yy) < 8 && 
+        iabs(a->x - b->x) < 8) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // creete actors on floor_index, if slot is empty
 void create_actors_on_floor(byte floor_index) {
@@ -376,6 +407,8 @@ void create_actors_on_floor(byte floor_index) {
   if (!a->onscreen) {
     Floor *floor = &floors[floor_index];
     a->state = CLIMBING;
+    a->name = ACTOR_ENEMY;
+
     a->x = rand8();
     a->yy = get_floor_yy(floor_index);
     a->floor = floor_index;
@@ -410,6 +443,9 @@ void draw_actor(byte i) {
     case CLIMBING:
       meta = (a->yy & 4) ? playerLClimb : playerRClimb;
       break;
+      case FALLING:
+      meta = dir ? playerLSad : playerRSad;
+      break;
   
   }
   // set sprite values, draw sprite
@@ -426,10 +462,10 @@ void draw_actor(byte i) {
 
 // actor falls down a floor
 void fall_down(struct Actor* actor) {
-  actor->floor--;
   actor->xvel = 0;
   actor->yvel = 0;
 }
+
 
 void draw_scoreboard() {
   oam_off = oam_spr(24+0, 24, '0'+(score >> 4), 1, oam_off);
@@ -462,7 +498,7 @@ void pickup_object(Actor* actor) {
       floor->objtype = 0;
       //refresh_floor(actor->floor);
       // did we hit a mine?
-      if (objtype == ITEM_HEART) {
+      if (objtype == ACTOR_ENEMY||ITEM_HEART) {
         // we hit a mine, fall down
         fall_down(actor);
         sfx_play(SND_HIT,0);
@@ -475,14 +511,6 @@ void pickup_object(Actor* actor) {
     }
   }
 }
-
-
-// draw the scoreboard, right now just two digits
-
-
-
-
-
 
 // should we scroll the screen upward?
 void check_scroll_up() {
@@ -499,12 +527,19 @@ void check_scroll_down() {
 }
 
 
-
 // move an actor (player or enemies)
 // joystick - game controller mask
 // scroll - if true, we should scroll screen (is player)
 void move_actor(struct Actor* actor, byte joystick, bool scroll) {
- 
+ 	
+    if(actor->state=FALLING){
+      if (scroll) {
+        check_scroll_up();
+        check_scroll_down();
+            fall_down(actor);
+
+      }
+    }
       
       // left/right has priority over climbing
        if (joystick & PAD_LEFT) {
@@ -547,6 +582,7 @@ void move_actor(struct Actor* actor, byte joystick, bool scroll) {
         check_scroll_up();
         check_scroll_down();
       }
+   
       
       
   }
@@ -564,26 +600,99 @@ void move_player() {
 
 }
 
-// returns absolute value of x
-byte iabs(int x) {
-  return x >= 0 ? x : -x;
-}
-
-
-
 
 
 // reward scene when player reaches roof
 void end_scene() {
-    
+
   actors[0].dir = 1;
   actors[0].state = CLIMBING;
   refresh_sprites();
   music_stop();
   // wait 1 seconds
   delay(50);
+  
 
 }
+void show_end(const byte* pal, const byte* rle){
+  
+  int x = 0;   // x scroll position
+  char i;	// actor index
+  char pad;	// controller flags
+  
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  // unpack nametable into the VRAM
+  vram_adr(0x2000);
+  vram_unrle(rle);
+  // enable rendering
+  ppu_on_all();
+  music_stop();
+
+
+
+    
+
+
+while(1){
+  
+     pad = pad_trigger(i);
+   if(pad & PAD_START){
+     sfx_play(0,1);
+   break;
+   }
+}
+
+music_play(0);
+}
+
+void show_title_screen(const byte* pal, const byte* rle,const byte* rle2) {
+  // disable rendering
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  
+  // unpack nametable into the VRAM
+  vram_adr(0x2000);
+  vram_unrle(rle);
+  vram_adr(0x2400);
+  vram_unrle(rle2);
+  // enable rendering
+  ppu_on_all();
+}
+
+void show_title(const byte* pal, const byte* rle){
+  
+  int x = 0;   // x scroll position
+  char i;	// actor index
+  char pad;	// controller flags
+  
+  ppu_off();
+  // set palette, virtual bright to 0 (total black)
+  pal_bg(pal);
+  // unpack nametable into the VRAM
+  vram_adr(0x2000);
+  vram_unrle(rle);
+  // enable rendering
+  ppu_on_all();
+
+
+    
+
+
+while(1){
+  
+     pad = pad_trigger(i);
+   if(pad & PAD_START){
+     sfx_play(0,1);
+   break;
+   }
+}
+
+music_play(0);
+}
+
 
 // game loop
 void play_scene() {
@@ -591,7 +700,7 @@ void play_scene() {
   byte i;
   // initialize actors array  
   memset(actors, 0, sizeof(actors));
-  actors[0].state = CLIMBING;
+  actors[0].state = WALKING;
   actors[0].name = ACTOR_PLAYER;
   actors[0].pal = 3;
   actors[0].x = 64;
@@ -611,14 +720,26 @@ void play_scene() {
     for (i=1; i<MAX_ACTOR; i++) {
       move_actor(&actors[i], rand8(), false);
     }
+    // see if the player hit another actor
+    if (check_collision(&actors[0])) {
+      fall_down(&actors[0]);
+      sfx_play(SND_HIT,0);
+      vbright = 8; // flash
+    }
   
     // flash effect
     if (vbright > 4) {
       pal_bright(--vbright);
     }
   }
+  
+ 
+  show_end(end_pal,end_rle);
+  
   // player reached goal; reward scene  
   end_scene();
+  
+  
 }
 
 /*{pal:"nes",layout:"nes"}*/
@@ -640,6 +761,9 @@ const char PALETTE[32] = {
 
 // set up PPU
 void setup_graphics() {
+  
+  
+  
  // clear sprites
   oam_hide_rest(0);
   // set palette colors
@@ -682,20 +806,6 @@ void type_message(const char* charptr) {
   }
 }
 
-void show_title_screen(const byte* pal, const byte* rle,const byte* rle2) {
-  // disable rendering
-  ppu_off();
-  // set palette, virtual bright to 0 (total black)
-  pal_bg(pal);
-  
-  // unpack nametable into the VRAM
-  vram_adr(0x2000);
-  vram_unrle(rle);
-  vram_adr(0x2400);
-  vram_unrle(rle2);
-  // enable rendering
-  ppu_on_all();
-}
   
 
 // set up famitone library
@@ -708,36 +818,7 @@ void setup_sounds() {
 // reward scene when player reaches roof
 
 
-void show_title(const byte* pal, const byte* rle){
-  
-  int x = 0;   // x scroll position
-  char i;	// actor index
-  char pad;	// controller flags
-  
-  ppu_off();
-  // set palette, virtual bright to 0 (total black)
-  pal_bg(pal);
-  // unpack nametable into the VRAM
-  vram_adr(0x2000);
-  vram_unrle(rle);
-  // enable rendering
-  ppu_on_all();
 
-
-    
-
-
-while(1){
-  
-     pad = pad_trigger(i);
-   if(pad & PAD_START){
-     sfx_play(0,1);
-   break;
-   }
-}
-
-music_play(0);
-}
 
 
 
@@ -746,7 +827,7 @@ void main() {
     show_title(back1_pal, title_rle);
     show_title_screen(back1_pal, back1_rle,back2_rle);
     setup_sounds();	// init famitone library
-   
+    
 
   
   
