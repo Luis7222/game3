@@ -460,6 +460,7 @@ void draw_actor(byte i) {
 // actor falls down a floor
 void fall_down(struct Actor* actor) {
   actor->state = FALLING;
+  actor->floor = 0;
   actor->xvel = 0;
   actor->yvel = 0;
 }
@@ -719,6 +720,7 @@ void play_scene() {
     // see if the player hit another actor
     if (check_collision(&actors[0])) {
       fall_down(&actors[0]);
+      ////////////////////////////////////////////////////////////////////////
       sfx_play(SND_HIT,0);
       vbright = 7; // flash
     }
