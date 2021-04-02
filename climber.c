@@ -81,7 +81,7 @@ static byte scroll_tile_y = 0;
 static byte player_screen_y = 0;
 
 // score (BCD)
-static byte score = 0;
+static byte score = 80;
 
 // screen flash animation (virtual bright)
 static byte vbright = 4;
@@ -177,8 +177,8 @@ typedef struct Floor {
   byte ypos;		// # of tiles from ground
   int height:5;		// # of tiles to next floor
   int gap:4;		// X position of gap
-  int objtype:2;	// item type (FloorItem)
-  int objpos:1;		// X position of object
+  int objtype:4;	// item type (FloorItem)
+  int objpos:4;		// X position of object
 } Floor;
 
 // array of floors
@@ -260,7 +260,6 @@ void draw_floor_line(byte row_height) {
           }
         }
         
-        // draw object, if it exists
      // draw object, if it exists
       if (lev->objtype) {
         byte ch = lev->objtype*4 + CH_ITEM;
@@ -273,21 +272,15 @@ void draw_floor_line(byte row_height) {
           buf[lev->objpos*2+1] = ch+2;	// top-right
         }
       }
-        // is there a gap? if so, clear bytes
-	if (lev->gap)
-          memset(buf+lev->gap*2, 0, GAPSIZE);
+       
       } 
       
-      else {
-        // clear buffer
-        memset(buf, 0, sizeof(buf));
-    
-        
-      }
+     
       
       break;
     }
   }
+  
   // compute row in name buffer and address
   rowy = (ROWS-1) - (row_height % ROWS);
   addr = getntaddr(1, rowy);
@@ -392,7 +385,13 @@ bool check_collision(Actor* a) {
         afloor == b->floor && 
         iabs(a->yy - b->yy) < 8 && 
         iabs(a->x - b->x) < 8) {
+      score --;
+      
+      if(score == 0 ){
+        
+      }
       return true;
+      
     }
   }
   return false;
@@ -599,7 +598,6 @@ void move_player() {
 }
 
 
-
 // reward scene when player reaches roof
 void end_scene() {
 
@@ -722,7 +720,7 @@ void play_scene() {
     if (check_collision(&actors[0])) {
       fall_down(&actors[0]);
       sfx_play(SND_HIT,0);
-      vbright = 8; // flash
+      vbright = 7; // flash
     }
   
     // flash effect
