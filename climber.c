@@ -54,7 +54,7 @@ typedef enum { SND_START, SND_HIT, SND_COIN, SND_JUMP } SFXIndex;
 #define GAPSIZE 4		// gap size in tiles
 #define BOTTOM_FLOOR_Y 2	// offset for bottommost floor
 
-#define MAX_ACTOR 9		// max # of moving actors
+#define MAX_ACTOR 2		// max # of moving actors
 #define SCREEN_Y_BOTTOM 209	// bottom of screen in pixels
 #define ACTOR_MIN_X 1		// leftmost position of actor
 #define ACTOR_MAX_X 28		// rightmost position of actor
@@ -383,9 +383,7 @@ bool check_collision(Actor* a) {
   byte i;
   byte afloor = a->floor;
   // can't fall through basement
-  if (afloor == 0) return false;
-  // can't fall if already falling
-  if (a->state == FALLING) return false;
+//  if (a->state == FALLING) return false;
   // iterate through entire list of actors
   for (i=1; i<MAX_ACTOR; i++) {
     Actor* b = &actors[i];
@@ -462,6 +460,7 @@ void draw_actor(byte i) {
 
 // actor falls down a floor
 void fall_down(struct Actor* actor) {
+  actor->state = FALLING;
   actor->xvel = 0;
   actor->yvel = 0;
 }
@@ -495,11 +494,10 @@ void pickup_object(Actor* actor) {
     // is the actor close to the object?
     if (actor->x >= objx && actor->x < objx+16) {
       // clear the item from the floor and redraw
-      floor->objtype = 0;
+      //floor->objtype = 0;
       //refresh_floor(actor->floor);
-      // did we hit a mine?
+      // did we hit ENEMY OR ITEM?
       if (objtype == ACTOR_ENEMY||ITEM_HEART) {
-        // we hit a mine, fall down
         fall_down(actor);
         sfx_play(SND_HIT,0);
         vbright = 8; // flash
